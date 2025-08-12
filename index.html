@@ -90,11 +90,15 @@ document.getElementById('zoom_in').addEventListener('click', zoomIn);
 document.getElementById('zoom_out').addEventListener('click', zoomOut);
 document.getElementById('searchBtn').addEventListener('click', searchInPage);
 
-pdfjsLib.getDocument('textbook.pdf').promise.then(pdfDoc_ => {
+const pdfUrl = "https://ilibrary.pk/api/public/dl/pN7R8bov?inline=true&token=hsvQHAbY244hvvVgSjnQnhoHgvZ7GnJtklPTzRqgrxu5PaSp-K_qRPcmaQTnh4JBb6SV1toJ90dkifOz9Zh4tIkm-r-gYQFXb-bsVsSyGS6cM7VgPCGZOFX6r8oHy6MQ";
+
+// Load PDF from external URL
+pdfjsLib.getDocument({ url: pdfUrl }).promise.then(pdfDoc_ => {
     pdfDoc = pdfDoc_;
     document.getElementById('page_count').textContent = pdfDoc.numPages;
     renderPage(pageNum);
 });
+
 </script>
 </body>
 </html>
