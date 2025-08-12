@@ -3,7 +3,32 @@
 <head>
 <meta charset="UTF-8">
 <title>Interactive Textbook</title>
-<link rel="stylesheet" href="style.css">
+<style>
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    background: #f2f2f2;
+    text-align: center;
+}
+#toolbar {
+    background: #333;
+    color: white;
+    padding: 10px;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 5px;
+}
+#toolbar button, #toolbar input {
+    padding: 5px 10px;
+    font-size: 14px;
+}
+canvas {
+    margin: 20px auto;
+    background: white;
+    box-shadow: 0 0 10px rgba(0,0,0,0.3);
+}
+</style>
 </head>
 <body>
 <div id="toolbar">
@@ -18,9 +43,10 @@
 
 <canvas id="the-canvas"></canvas>
 
-<script src="pdfjs/pdf.js"></script>
+<!-- Load PDF.js from CDN -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script>
-pdfjsLib.GlobalWorkerOptions.workerSrc = 'pdfjs/pdf.worker.js';
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
 let pdfDoc = null,
     pageNum = 1,
@@ -72,9 +98,8 @@ function zoomOut() { if (scale > 0.4) { scale -= 0.2; queueRenderPage(pageNum); 
 function searchInPage() {
     const term = document.getElementById('searchTerm').value.trim().toLowerCase();
     if (!term) return;
-    pdfDoc.getPage(pageNum).then(page => {
-        return page.getTextContent();
-    }).then(textContent => {
+    pdfDoc.getPage(pageNum).then(page => page.getTextContent())
+    .then(textContent => {
         const text = textContent.items.map(i => i.str).join(' ');
         if (text.toLowerCase().includes(term)) {
             alert(`"${term}" found on page ${pageNum}`);
@@ -90,6 +115,7 @@ document.getElementById('zoom_in').addEventListener('click', zoomIn);
 document.getElementById('zoom_out').addEventListener('click', zoomOut);
 document.getElementById('searchBtn').addEventListener('click', searchInPage);
 
+// Load PDF
 pdfjsLib.getDocument('textbook.pdf').promise.then(pdfDoc_ => {
     pdfDoc = pdfDoc_;
     document.getElementById('page_count').textContent = pdfDoc.numPages;
