@@ -1,3 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Interactive Textbook</title>
+<style>
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    background: #f2f2f2;
+    text-align: center;
+}
+#toolbar {
+    background: #333;
+    color: white;
+    padding: 10px;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 5px;
+}
+#toolbar button, #toolbar input {
+    padding: 5px 10px;
+    font-size: 14px;
+}
+canvas {
+    margin: 20px auto;
+    background: white;
+    box-shadow: 0 0 10px rgba(0,0,0,0.3);
+}
+#searchResults {
+    margin: 10px;
+    padding: 5px;
+    background: white;
+    max-width: 500px;
+    margin-left: auto;
+    margin-right: auto;
+    border-radius: 5px;
+}
+#searchResults span {
+    cursor: pointer;
+    padding: 3px 6px;
+    margin: 2px;
+    background: #ddd;
+    border-radius: 3px;
+    display: inline-block;
+}
+#searchResults span:hover {
+    background: #aaa;
+}
+</style>
+</head>
+<body>
+<div id="toolbar">
+    <button id="prev">⏮ Prev</button>
+    <span>Page <span id="page_num"></span> / <span id="page_count"></span></span>
+    <button id="next">Next ⏭</button>
+    <button id="zoom_in">➕ Zoom In</button>
+    <button id="zoom_out">➖ Zoom Out</button>
+    <input type="text" id="searchTerm" placeholder="Search...">
+    <button id="searchBtn">🔍</button>
+</div>
+
+<div id="searchResults"></div>
+<canvas id="the-canvas"></canvas>
+
+<!-- PDF.js from CDN -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script>
 pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
@@ -84,3 +152,6 @@ pdfjsLib.getDocument('textbook.pdf').promise.then(pdfDoc_ => {
     renderPage(pageNum);
 });
 </script>
+
+</body>
+</html>
