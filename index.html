@@ -4,87 +4,129 @@
 <meta charset="UTF-8">
 <title>Interactive Textbook</title>
 <style>
-body {
-    font-family: Arial, sans-serif;
-    margin: 0;
-    background: #f2f2f2;
-    text-align: center;
-}
-#toolbar {
-    background: #333;
-    color: white;
-    padding: 10px;
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 5px;
-}
-#toolbar button, #toolbar input {
-    padding: 5px 10px;
-    font-size: 14px;
-}
-canvas {
-    margin: 20px auto;
-    background: white;
-    box-shadow: 0 0 10px rgba(0,0,0,0.3);
-}
-#searchResults {
-    margin: 10px;
-    padding: 5px;
-    background: white;
-    max-width: 500px;
-    margin-left: auto;
-    margin-right: auto;
-    border-radius: 5px;
-}
-#searchResults span {
-    cursor: pointer;
-    padding: 3px 6px;
-    margin: 2px;
-    background: #ddd;
-    border-radius: 3px;
-    display: inline-block;
-}
-#searchResults span:hover {
-    background: #aaa;
-}
+  :root { --toolbar-h: 56px; }
+  html,body { height: 100%; margin: 0; }
+  body {
+      font-family: Arial, sans-serif;
+      background: #f2f2f2;
+      display: flex;
+      flex-direction: column;
+  }
+  #toolbar {
+      height: var(--toolbar-h);
+      background: #333;
+      color: white;
+      padding: 6px 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      box-sizing: border-box;
+  }
+  #toolbar button, #toolbar input {
+      padding: 6px 10px;
+      font-size: 14px;
+  }
+  #viewer {
+      flex: 1 1 auto;
+      display: flex;
+      justify-content: center;
+      align-items: start;
+      overflow: hidden; /* container will manage scrolling */
+      padding: 12px;
+      box-sizing: border-box;
+  }
+  #canvasContainer {
+      background: white;
+      box-shadow: 0 0 10px rgba(0,0,0,0.2);
+      overflow: auto;
+      width: calc(100% - 24px);
+      height: calc(100% - 24px);
+      max-width: 1400px;
+      max-height: calc(100vh - var(--toolbar-h) - 24px);
+      border-radius: 6px;
+      position: relative;
+  }
+  #the-canvas {
+      display: block;
+      transform-origin: 0 0; /* we position using scroll, not transform origin */
+      user-select: none;
+      -webkit-user-select: none;
+  }
+  #searchResults {
+      position: absolute;
+      left: 8px;
+      top: 8px;
+      z-index: 40;
+      background: rgba(255,255,255,0.95);
+      padding: 6px 8px;
+      border-radius: 6px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+      max-width: 360px;
+      display: none; /* shown when search results present */
+  }
+  #searchResults span { cursor: pointer; padding: 3px 6px; margin: 2px; background: #eee; border-radius: 3px; display: inline-block;}
+  #searchResults span:hover { background: #ddd; }
+  .hint { color: #bbb; font-size: 12px; margin-left: 6px; }
 </style>
 </head>
 <body>
-<div id="toolbar">
-    <button id="prev">⏮ Prev</button>
-    <span>Page <span id="page_num"></span> / <span id="page_count"></span></span>
-    <button id="next">Next ⏭</button>
-    <button id="zoom_in">➕ Zoom In</button>
-    <button id="zoom_out">➖ Zoom Out</button>
-    <input type="text" id="searchTerm" placeholder="Search...">
-    <button id="searchBtn">🔍</button>
-</div>
+  <div id="toolbar">
+      <button id="prev">⏮ Prev</button>
+      <span>Page <span id="page_num"></span> / <span id="page_count"></span></span>
+      <button id="next">Next ⏭</button>
 
-<div id="searchResults"></div>
-<canvas id="the-canvas"></canvas>
+      <button id="zoom_in">➕ Zoom In</button>
+      <button id="zoom_out">➖ Zoom Out</button>
+
+      <input type="text" id="searchTerm" placeholder="Search...">
+      <button id="searchBtn">🔍</button>
+
+      <span class="hint">Use <strong>Ctrl/⌘ + Wheel</strong> to zoom centered on mouse</span>
+  </div>
+
+  <div id="viewer">
+      <div id="canvasContainer">
+          <div id="searchResults"></div>
+          <canvas id="the-canvas"></canvas>
+      </div>
+  </div>
 
 <!-- PDF.js from CDN -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script>
+/* ====== PDF.js setup ====== */
 pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
-let pdfDoc = null,
-    pageNum = 1,
-    pageRendering = false,
-    pageNumPending = null,
-    scale = 1.0,
-    canvas = document.getElementById('the-canvas'),
-    ctx = canvas.getContext('2d');
+let pdfDoc = null;
+let pageNum = 1;
+let pageRendering = false;
+let pageNumPending = null;
 
+const MIN_SCALE = 0.4;
+const MAX_SCALE = 4.0;
+
+let scale = 1.0;            // logical scale used to render PDF
+let canvas = document.getElementById('the-canvas');
+let ctx = canvas.getContext('2d');
+const container = document.getElementById('canvasContainer');
+const searchResultsDiv = document.getElementById('searchResults');
+
+/* Render page at current `scale`. After rendering we set the canvas pixel size and CSS size
+   so container's scrollbars correspond to the full page size. */
 function renderPage(num) {
     pageRendering = true;
     pdfDoc.getPage(num).then(page => {
-        let viewport = page.getViewport({ scale: scale });
-        canvas.height = viewport.height;
-        canvas.width = viewport.width;
-        let renderContext = { canvasContext: ctx, viewport: viewport };
-        let renderTask = page.render(renderContext);
+        const viewport = page.getViewport({ scale: scale });
+        // Set canvas pixel dimensions for crisp rendering
+        canvas.width = Math.floor(viewport.width);
+        canvas.height = Math.floor(viewport.height);
+        // Also set CSS size to match (no extra scaling)
+        canvas.style.width = canvas.width + 'px';
+        canvas.style.height = canvas.height + 'px';
+
+        const renderContext = { canvasContext: ctx, viewport: viewport };
+        const renderTask = page.render(renderContext);
         renderTask.promise.then(() => {
             pageRendering = false;
             if (pageNumPending !== null) {
@@ -93,6 +135,8 @@ function renderPage(num) {
             }
         });
         document.getElementById('page_num').textContent = num;
+    }).catch(err => {
+        console.error('Error rendering page', err);
     });
 }
 
@@ -101,57 +145,133 @@ function queueRenderPage(num) {
     else renderPage(num);
 }
 
+/* Prev/Next */
 function onPrevPage() {
     if (pageNum <= 1) return;
     pageNum--;
     queueRenderPage(pageNum);
 }
-
 function onNextPage() {
+    if (!pdfDoc) return;
     if (pageNum >= pdfDoc.numPages) return;
     pageNum++;
     queueRenderPage(pageNum);
 }
 
-function zoomIn() { scale += 0.2; queueRenderPage(pageNum); }
-function zoomOut() { if (scale > 0.4) { scale -= 0.2; queueRenderPage(pageNum); } }
+/* Zoom helpers (buttons) that animate to target scale centered at container center */
+function zoomBy(factor) {
+    const rect = container.getBoundingClientRect();
+    const centerX = rect.width / 2;
+    const centerY = rect.height / 2;
+    animateZoom(scale * factor, centerX, centerY);
+}
+function setScaleClamped(s) {
+    if (s < MIN_SCALE) s = MIN_SCALE;
+    if (s > MAX_SCALE) s = MAX_SCALE;
+    return s;
+}
 
+/* Smooth zoom animation that keeps the point under the cursor (cx,cy within container client coords) stable.
+   cx,cy are client coordinates *relative to the container's content area* (i.e., clientX - rect.left).
+*/
+let animating = false;
+function animateZoom(targetScaleRaw, centerClientX, centerClientY) {
+    const targetScale = setScaleClamped(targetScaleRaw);
+    if (Math.abs(targetScale - scale) < 0.001) return; // nothing to do
+
+    const startScale = scale;
+    const duration = 180; // ms
+    const startTime = performance.now();
+
+    // Compute point-of-interest ratios relative to current canvas
+    // Get current canvas width/height in CSS pixels (client)
+    const prevCanvasWidth = canvas.clientWidth;
+    const prevCanvasHeight = canvas.clientHeight;
+
+    // centerClientX is position inside container client box (0..container.clientWidth)
+    // Convert to offset within content coordinates (including current scroll)
+    const offsetX = centerClientX + container.scrollLeft;
+    const offsetY = centerClientY + container.scrollTop;
+
+    // ratios of that point within the canvas
+    const ratioX = (prevCanvasWidth > 0) ? (offsetX / prevCanvasWidth) : 0.5;
+    const ratioY = (prevCanvasHeight > 0) ? (offsetY / prevCanvasHeight) : 0.5;
+
+    animating = true;
+    function step(now) {
+        const t = Math.min(1, (now - startTime) / duration);
+        // easeInOutQuad
+        const ease = t < 0.5 ? 2*t*t : -1 + (4 - 2*t)*t;
+        const currentScale = startScale + (targetScale - startScale) * ease;
+        scale = currentScale;
+
+        // Render the page at the intermediate scale
+        // We'll render a frame and then adjust scroll to keep the same ratio point under the cursor
+        // Keep the currently displayed page number same
+        pdfDoc.getPage(pageNum).then(page => {
+            const viewport = page.getViewport({ scale: scale });
+            canvas.width = Math.floor(viewport.width);
+            canvas.height = Math.floor(viewport.height);
+            canvas.style.width = canvas.width + 'px';
+            canvas.style.height = canvas.height + 'px';
+            return page.render({ canvasContext: ctx, viewport: viewport }).promise;
+        }).then(() => {
+            // After canvas size changed, compute new scroll so the same relative point stays under mouse
+            const newCanvasWidth = canvas.clientWidth;
+            const newCanvasHeight = canvas.clientHeight;
+
+            // New scrollLeft such that (ratioX * newCanvasWidth) becomes at position centerClientX
+            const newScrollLeft = Math.max(0, Math.min(newCanvasWidth - container.clientWidth,
+                ratioX * newCanvasWidth - centerClientX));
+            const newScrollTop = Math.max(0, Math.min(newCanvasHeight - container.clientHeight,
+                ratioY * newCanvasHeight - centerClientY));
+
+            container.scrollLeft = newScrollLeft;
+            container.scrollTop = newScrollTop;
+        }).catch(err => console.error(err));
+
+        if (t < 1) {
+            requestAnimationFrame(step);
+        } else {
+            animating = false;
+            scale = targetScale; // ensure exact
+            // final render to make sure crisp
+            queueRenderPage(pageNum);
+        }
+    }
+    requestAnimationFrame(step);
+}
+
+/* Wheel-based zoom centered on mouse: use Ctrl/Cmd + wheel to zoom.
+   If you prefer zoom on plain wheel, remove the event.ctrlKey check below.
+*/
+container.addEventListener('wheel', function(e) {
+    // If user holds Ctrl (or Cmd on mac), perform zoom instead of scroll
+    const macMeta = e.metaKey; // command key
+    const ctrl = e.ctrlKey || macMeta;
+    if (!ctrl) return; // let container scroll normally
+
+    e.preventDefault();
+    // wheel deltaY: negative = wheel up (zoom in), positive = wheel down (zoom out)
+    const zoomFactor = 1.12;
+    const delta = e.deltaY;
+    const rect = container.getBoundingClientRect();
+    const clientX = e.clientX - rect.left; // client coords relative to container
+    const clientY = e.clientY - rect.top;
+
+    const target = delta < 0 ? scale * zoomFactor : scale / zoomFactor;
+    animateZoom(target, clientX, clientY);
+}, { passive: false });
+
+/* Zoom buttons (animated) */
+function zoomInBtn() { animateZoom(scale * 1.2, container.clientWidth/2, container.clientHeight/2); }
+function zoomOutBtn() { animateZoom(scale / 1.2, container.clientWidth/2, container.clientHeight/2); }
+
+/* Search (current-page or full-PDF search can be added later) */
 function searchInPage() {
     const term = document.getElementById('searchTerm').value.trim().toLowerCase();
     if (!term) return;
     pdfDoc.getPage(pageNum).then(page => page.getTextContent())
     .then(textContent => {
         const text = textContent.items.map(i => i.str).join(' ');
-        if (text.toLowerCase().includes(term)) {
-            alert(`"${term}" found on page ${pageNum}`);
-        } else {
-            alert(`"${term}" not found on this page`);
-        }
-    });
-}
-
-document.getElementById('prev').addEventListener('click', onPrevPage);
-document.getElementById('next').addEventListener('click', onNextPage);
-document.getElementById('zoom_in').addEventListener('click', zoomIn);
-document.getElementById('zoom_out').addEventListener('click', zoomOut);
-document.getElementById('searchBtn').addEventListener('click', searchInPage);
-
-// 🔹 Add keyboard navigation
-document.addEventListener('keydown', function(event) {
-    if (event.key === 'ArrowLeft') {
-        onPrevPage();
-    } else if (event.key === 'ArrowRight') {
-        onNextPage();
-    }
-});
-
-// Load PDF
-pdfjsLib.getDocument('textbook.pdf').promise.then(pdfDoc_ => {
-    pdfDoc = pdfDoc_;
-    document.getElementById('page_count').textContent = pdfDoc.numPages;
-    renderPage(pageNum);
-});
-</script>
-
-</body>
-</html>
+        if (
