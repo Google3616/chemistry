@@ -116,49 +116,34 @@ function onNextPage() {
 function zoomIn() { scale += 0.2; queueRenderPage(pageNum); }
 function zoomOut() { if (scale > 0.4) { scale -= 0.2; queueRenderPage(pageNum); } }
 
-// Full PDF search
-function searchWholePDF() {
+function searchInPage() {
     const term = document.getElementById('searchTerm').value.trim().toLowerCase();
-    const resultsDiv = document.getElementById('searchResults');
-    resultsDiv.innerHTML = '';
     if (!term) return;
-
-    let foundPages = [];
-
-    let checkPage = (pageNo) => {
-        return pdfDoc.getPage(pageNo).then(page => page.getTextContent())
-        .then(textContent => {
-            const text = textContent.items.map(i => i.str).join(' ');
-            if (text.toLowerCase().includes(term)) {
-                foundPages.push(pageNo);
-            }
-        });
-    };
-
-    let promises = [];
-    for (let i = 1; i <= pdfDoc.numPages; i++) {
-        promises.push(checkPage(i));
-    }
-
-    Promise.all(promises).then(() => {
-        if (foundPages.length > 0) {
-            resultsDiv.innerHTML = `Found on pages: ` + foundPages.map(p => `<span onclick="goToPage(${p})">${p}</span>`).join(' ');
+    pdfDoc.getPage(pageNum).then(page => page.getTextContent())
+    .then(textContent => {
+        const text = textContent.items.map(i => i.str).join(' ');
+        if (text.toLowerCase().includes(term)) {
+            alert(`"${term}" found on page ${pageNum}`);
         } else {
-            resultsDiv.innerHTML = `No matches found for "${term}"`;
+            alert(`"${term}" not found on this page`);
         }
     });
-}
-
-function goToPage(num) {
-    pageNum = num;
-    queueRenderPage(num);
 }
 
 document.getElementById('prev').addEventListener('click', onPrevPage);
 document.getElementById('next').addEventListener('click', onNextPage);
 document.getElementById('zoom_in').addEventListener('click', zoomIn);
 document.getElementById('zoom_out').addEventListener('click', zoomOut);
-document.getElementById('searchBtn').addEventListener('click', searchWholePDF);
+document.getElementById('searchBtn').addEventListener('click', searchInPage);
+
+// 🔹 Add keyboard navigation
+document.addEventListener('keydown', function(event) {
+    if (event.key === 'ArrowLeft') {
+        onPrevPage();
+    } else if (event.key === 'ArrowRight') {
+        onNextPage();
+    }
+});
 
 // Load PDF
 pdfjsLib.getDocument('textbook.pdf').promise.then(pdfDoc_ => {
@@ -167,5 +152,6 @@ pdfjsLib.getDocument('textbook.pdf').promise.then(pdfDoc_ => {
     renderPage(pageNum);
 });
 </script>
+
 </body>
 </html>
