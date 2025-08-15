@@ -25,7 +25,8 @@ body {
     padding: 10px;
     display: flex;
     flex-wrap: wrap;
-    justify-content: center;
+    justify-content: flex-start; /* align left */
+    align-items: center;
     gap: 5px;
     box-shadow: 0 2px 8px rgba(0,0,0,0.5);
 }
@@ -41,6 +42,7 @@ body {
     cursor: pointer;
     transition: background-color 0.3s;
 }
+
 
 #toolbar button:hover, 
 #toolbar input:hover {
@@ -66,6 +68,7 @@ canvas {
 <div id="toolbar">
     <button id="prev">⏮ Prev</button>
     <span>Page <span id="page_num"></span> / <span id="page_count"></span></span>
+    <button id="homeBtn">🏠 Home</button>
     <button id="next">Next ⏭</button>
     <button id="zoom_in">➕ Zoom In</button>
     <button id="zoom_out">➖ Zoom Out</button>
@@ -147,6 +150,10 @@ document.getElementById('next').addEventListener('click', onNextPage);
 document.getElementById('zoom_in').addEventListener('click', zoomIn);
 document.getElementById('zoom_out').addEventListener('click', zoomOut);
 document.getElementById('searchBtn').addEventListener('click', searchInPage);
+document.getElementById('homeBtn').addEventListener('click', () => {
+    window.location.href = '/'; // or the URL of your homepage
+});
+
 
 // 🔹 Add keyboard navigation
 document.addEventListener('keydown', function(event) {
