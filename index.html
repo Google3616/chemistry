@@ -51,7 +51,6 @@
 
   .card {
     background-color: var(--bg-secondary);
-    padding: 30px;
     border-radius: 15px;
     text-align: center;
     text-decoration: none;
@@ -59,6 +58,21 @@
     box-shadow: 0 0 20px rgba(0,0,0,0.4);
     transition: transform 0.2s, box-shadow 0.3s;
     border: 2px solid transparent;
+    overflow: hidden; /* so image corners match card rounding */
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+  }
+
+  .card img {
+    width: 100%;
+    height: 150px;
+    object-fit: cover; /* crop to fill space without distortion */
+  }
+
+  .card-content {
+    padding: 20px;
+    flex-grow: 1;
   }
 
   .card:hover {
@@ -93,13 +107,19 @@
 </header>
 
 <main class="nav-cards">
-  <a href="/periodic-table" class="card">
-    <h2>Periodic Table</h2>
-    <p>Full interactive periodic table</p>
+  <a href="/chemistry/periodic-table" class="card">
+    <img src="images/periodic-thumbnail.jpg" alt="Periodic Table Thumbnail">
+    <div class="card-content">
+      <h2>Periodic Table</h2>
+      <p>Full interactive periodic table</p>
+    </div>
   </a>
-  <a href="/textbook" class="card">
-    <h2>Textbook</h2>
-    <p>Access your full chemistry textbook online</p>
+  <a href="/chemistry/textbook" class="card">
+    <img src="images/textbook-thumbnail.jpg" alt="Textbook Thumbnail">
+    <div class="card-content">
+      <h2>Textbook</h2>
+      <p>Access your full chemistry textbook online</p>
+    </div>
   </a>
 </main>
 
