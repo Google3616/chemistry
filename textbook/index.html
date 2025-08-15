@@ -146,7 +146,7 @@ document.addEventListener('keydown', function(event) {
 });
 
 // Load PDF
-pdfjsLib.getDocument('/textbook.pdf').promise.then(pdfDoc_ => {
+pdfjsLib.getDocument('textbook/textbook.pdf').promise.then(pdfDoc_ => {
     pdfDoc = pdfDoc_;
     document.getElementById('page_count').textContent = pdfDoc.numPages;
     renderPage(pageNum);
