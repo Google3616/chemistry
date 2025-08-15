@@ -3,7 +3,64 @@
 <head>
 <meta charset="UTF-8">
 <title>Interactive Textbook</title>
-<style href = "/style.css"></style>
+<style>
+:root {
+    --bg-primary: #1a1a2e;
+    --bg-secondary: #16213e;
+    --text-primary: #cccccc;
+    --accent-color: #4d80e4;
+}
+
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    text-align: center;
+}
+
+#toolbar {
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    padding: 10px;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 5px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+}
+
+#toolbar button, 
+#toolbar input {
+    padding: 6px 12px;
+    font-size: 14px;
+    border: none;
+    border-radius: 5px;
+    background: var(--accent-color);
+    color: white;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+#toolbar button:hover, 
+#toolbar input:hover {
+    background-color: #3a6ad4;
+}
+
+#toolbar input[type="text"], 
+#toolbar input[type="number"] {
+    background-color: rgba(255,255,255,0.1);
+    color: var(--text-primary);
+    border: 1px solid rgba(255,255,255,0.2);
+}
+
+canvas {
+    margin: 20px auto;
+    background: var(--bg-secondary);
+    box-shadow: 0 0 15px rgba(0,0,0,0.8);
+    border: 2px solid var(--accent-color);
+}
+</style>
 </head>
 <body>
 <div id="toolbar">
