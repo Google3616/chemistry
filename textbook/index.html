@@ -146,7 +146,7 @@ document.addEventListener('keydown', function(event) {
 });
 
 // Load PDF
-pdfjsLib.getDocument('textbook/textbook.pdf').promise.then(pdfDoc_ => {
+pdfjsLib.getDocument('https://github.com/Google3616/chemistry/tree/d47fb0892674a45fc578fb371f78557335bdbeb6/textbook').promise.then(pdfDoc_ => {
     pdfDoc = pdfDoc_;
     document.getElementById('page_count').textContent = pdfDoc.numPages;
     renderPage(pageNum);
