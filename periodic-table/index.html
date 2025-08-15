@@ -1,0 +1,1245 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Interactive Periodic Table</title>
+    
+    <link rel="icon" href="https://www.svgrepo.com/show/9768/atom.svg" />
+    <style>
+      :root {
+  --bg-primary: #171b31;
+  --bg-secondary: #222840;
+  --text-primary: #FFFFFF;
+  --accent-color: #4285f4;
+  --shadow-color: rgba(0, 0, 0, 0.3);
+  --canvas-border: #343c5a;
+  --results-bg: #2c3247;
+
+  /* Updated element group colors to match Bohr model theme */
+  --alkali-metal: #ff5252;
+  --alkaline-earth: #e91e63;
+  --transition-metal: #f4aa42;
+  --lanthanide: #ffd54f;
+  --actinide: #ff7043;
+  --post-transition: #66bb6a;
+  --metalloid: #26c6da;
+  --nonmetal: #29b6f6;
+  --noble-gas: #7986cb;
+}
+
+      body {
+        font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+        background-color: var(--bg-primary);
+        margin: 0;
+        padding: 20px;
+        color: #333;
+        transition: background-color 0.3s, color 0.3s;
+        min-height: 100vh;
+      }
+
+      h1 {
+        text-align: center;
+        margin-bottom: 10px;
+      }
+
+      .container {
+        display: flex;
+        justify-content: center;
+        align-items: flex-start;
+        gap: 20px;
+        flex-wrap: wrap;
+        max-width: 1400px;
+        margin: 0 auto;
+      }
+
+      .periodic-table {
+        display: grid;
+        grid-template-columns: repeat(18, 60px);
+        grid-template-rows: repeat(9, 60);
+        grid-gap: 7px;
+      }
+
+      .element {
+        height: 100%;
+        padding: 1px;
+        border: none;
+        border-radius:8px;
+        background-color: var(--bg-secondary);
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        align-items: center;
+        cursor: pointer;
+        position: relative;
+        user-select: none;
+        transition: transform 0.3s, box-shadow 0.3s, background-color 0.3s;
+        z-index: 1;
+      }
+
+      .element:hover {
+        transform: scale(2);
+        box-shadow: 0 5px 15px var(--shadow-color);
+        z-index: 10;
+      }
+
+      .element.selected {
+        transform: scale(1.25);
+        box-shadow: 0 5px 15px var(--shadow-color);
+        border: 2px solid var(--accent-color);
+        z-index: 5;
+      }
+
+      .element:active {
+        transform: scale(1.1);
+      }
+
+      .element-number {
+        font-size: 10px;
+        align-self: flex-start;
+        margin-left: 2px;
+      }
+
+      .element-symbol {
+        font-weight: bold;
+        font-size: 18px;
+      }
+
+      .element-name {
+        font-size: 8px;
+        text-align: center;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        width: 100%;
+      }
+
+      .element-mass {
+        font-size: 8px;
+      }
+
+      .details-panel {
+        background-color: var(--results-bg);
+        padding-left: 30px;
+        padding-right: 30px;
+        padding-bottom: 20px;
+        border-radius: 8px;
+        box-shadow: 0 5px 15px var(--shadow-color);
+        min-width: 300px;
+        max-width: 400px;
+        transition: opacity 0.3s, transform 0.3s;
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        z-index: 20;
+        opacity: 0;
+        visibility: hidden;
+        color:#AAAAAA;
+      }
+
+      .details-panel.visible {
+        opacity: 1;
+        visibility: visible;
+      }
+
+      .overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: rgba(0, 0, 0, 0.5);
+        z-index: 15;
+        display: none;
+      }
+
+      .overlay.visible {
+        display: block;
+      }
+
+      .element-details {
+        display: grid;
+        grid-template-columns: 130px 1fr;
+        grid-gap: 10px;
+        margin-top: 15px;
+        color:#AAAAAA;
+      }
+      
+      .details-panel-button
+      {
+        background-color:#AAAAAA;
+        position:absolute;
+        top:20px;
+        right: 30px;
+        width: 35%;
+        height:20px;
+        color:var(--bg-primary);
+        text-align:center;
+        border-radius:8px;
+  
+      }.details-panel-button.hover
+      {
+        transform:scale(2);
+      }
+
+      .property-name {
+        font-weight: bold;
+        transition: transform 0.2s;
+      }
+      .property-name.hover {
+        transform: scale(2);
+      }
+
+      .property-value {
+        text-align: right;
+      }
+      .property-value.hover {
+        transform: scale(2);
+      }
+
+      .legend {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 10px;
+        margin: 0 auto;
+        max-width: 600px;
+        background-color: var(--bg-secondary);
+        padding: 15px;
+        border-radius: 8px;
+        box-shadow: 0 2px 10px var(--shadow-color);
+        position: absolute;
+        left: 40%;
+        transform: translateX(-50%);
+        top: 200px;
+        z-index: 10;
+      }
+      
+      #context-menu
+      {
+        display: none;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 10px;
+        margin: 0 auto;
+        max-width: 600px;
+        background-color: var(--bg-secondary);
+        padding: 15px;
+        border-radius: 8px;
+        box-shadow: 0 2px 10px var(--shadow-color);
+        position: fixed;
+        left: 40%;
+        transform: translateX(-50%);
+        top: 200px;
+        z-index: 10;
+        color:#AAAAAA;
+      }
+
+      .legend-item {
+        display: flex;
+        align-items: center;
+        margin-right: 15px;
+        transition: transform 0.2s;
+        color:#AAAAAA;
+      }
+
+      .legend-item:hover {
+        transform: scale(1.05);
+      }
+
+      .legend-color {
+        width: 15px;
+        height: 15px;
+        margin-right: 5px;
+        border: 1px solid var(--canvas-border);
+      }
+
+      #loading {
+        text-align: center;
+        padding: 20px;
+        font-weight: bold;
+      }
+
+      .search-container {
+        display: flex;
+        justify-content: center;
+        margin-bottom: 15px;
+      }
+
+      #elementSearch {
+        padding: 10px 15px;
+        width: 300px;
+        border: 1px solid var(--canvas-border);
+        border-radius: 25px;
+        font-size: 14px;
+        box-shadow: 0 2px 5px var(--shadow-color);
+        transition: box-shadow 0.3s, width 0.3s;
+      }
+
+      #elementSearch:focus {
+        outline: none;
+        box-shadow: 0 3px 10px var(--shadow-color);
+        width: 350px;
+      }
+
+      .alkali-metal {
+        background-color: var(--alkali-metal);
+      }
+      .alkaline-earth {
+        background-color: var(--alkaline-earth);
+      }
+      .transition-metal {
+        background-color: var(--transition-metal);
+      }
+      .post-transition {
+        background-color: var(--post-transition);
+      }
+      .metalloid {
+        background-color: var(--metalloid);
+      }
+      .nonmetal {
+        background-color: var(--nonmetal);
+      }
+      .noble-gas {
+        background-color: var(--noble-gas);
+      }
+      .lanthanide {
+        background-color: var(--lanthanide);
+      }
+      .actinide {
+        background-color: var(--actinide);
+      }
+      
+      .unknown {
+        color: #AAAAAA;
+      }
+
+      .empty {
+        visibility: hidden;
+      }
+
+      .lanthanide-label,
+      .actinide-label {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 8px;
+        font-weight: bold;
+        border-radius:8px;
+        color: var(--background-primary);
+        cursor: default;
+        transition: transform 0.2s;
+      }
+
+      .lanthanide-label:hover,
+      .actinide-label:hover {
+        transform: scale(1.05);
+      }
+
+      .lanthanide-label {
+        background-color: var(--lanthanide);
+      }
+      .actinide-label {
+        background-color: var(--actinide);
+      }
+
+      @media (max-width: 1200px) {
+        .periodic-table {
+          grid-template-columns: repeat(18, minmax(40px, 50px));
+          grid-template-rows: repeat(10, minmax(40px, 50px));
+        }
+
+        .element-symbol {
+          font-size: 16px;
+        }
+      }
+
+      @media (max-width: 900px) {
+        .periodic-table {
+          grid-template-columns: repeat(18, minmax(30px, 40px));
+          grid-template-rows: repeat(10, minmax(30px, 40px));
+        }
+
+        .element-symbol {
+          font-size: 14px;
+        }
+
+        .element-name {
+          font-size: 7px;
+        }
+      }
+
+      @media (max-width: 768px) {
+        .container {
+          flex-direction: column;
+          align-items: center;
+        }
+
+        .details-panel {
+          width: 90%;
+          max-width: none;
+          margin-top: 20px;
+        }
+      }
+
+      .element-tooltip {
+        position: absolute;
+        bottom: 100%;
+        left: 50%;
+        transform: translateX(-50%);
+        background-color: var(--bg-secondary);
+        color: var(--text-primary);
+        padding: 5px 10px;
+        border-radius: 4px;
+        box-shadow: 0 2px 8px var(--shadow-color);
+        font-size: 12px;
+        white-space: nowrap;
+        pointer-events: none;
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 0.2s, visibility 0.2s;
+        z-index: 100;
+      }
+
+      .element:hover .element-tooltip {
+        opacity: 1;
+        visibility: visible;
+      }
+
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+          transform: scale(0.9);
+        }
+        to {
+          opacity: 1;
+          transform: scale(1);
+        }
+      }
+
+      .element {
+        animation: fadeIn 0.3s ease-out;
+      }
+    </style>
+  </head>
+  <body oncontextmenu="return false;">
+    <h1 style="color:#AAAAAA">Interactive Periodic Table</h1>
+
+    <div class="search-container">
+      <input
+        type="text"
+        id="elementSearch"
+        placeholder="Search for elements..."
+      />
+    </div>
+
+    <div class="legend">
+      <div class="legend-item">
+        <div class="legend-color alkali-metal"></div>
+        <span>Alkali Metals</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-color alkaline-earth"></div>
+        <span>Alkaline Earth Metals</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-color transition-metal"></div>
+        <span>Transition Metals</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-color post-transition"></div>
+        <span>Post-Transition Metals</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-color metalloid"></div>
+        <span>Metalloids</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-color nonmetal"></div>
+        <span>Nonmetals</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-color noble-gas"></div>
+        <span>Noble Gases</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-color lanthanide"></div>
+        <span>Lanthanides</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-color actinide"></div>
+        <span>Actinides</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-color unknown"></div>
+        <span>Unknown</span>
+      </div>
+    </div>
+    
+    <div id = "context-menu">
+      yep
+    </div>
+
+    <div class="container">
+      <div id="periodicTableContainer">
+        <div id="loading">Loading Periodic Table Data...</div>
+      </div>
+
+      <div id = "details-panel" class="details-panel">
+        <div class = "details-panel-button" id = "bohrButton">
+          View Bohr Model
+        </div>
+        <h2 id="detailTitle">Element Details</h2>
+        <div id="elementDetails">
+          <p>Select an element to view detailed information.</p>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // Find the context menu code and expand it
+let elementsData = [];
+let selectedElement = null;
+
+function getElementCategory(element) {
+  const atomicNumber = element.number;
+  const group = element.group;
+
+  if (atomicNumber >= 109 && atomicNumber <= 118) {
+    return "unknown";
+  }
+  if (group === 1 && atomicNumber > 1) return "alkali-metal";
+
+  if (group === 2 && atomicNumber >= 4) return "alkaline-earth";
+
+  if (
+    group >= 3 &&
+    group <= 12 &&
+    !(
+      (atomicNumber >= 57 && atomicNumber <= 71) ||
+      (atomicNumber >= 89 && atomicNumber <= 103)
+    )
+  )
+    return "transition-metal";
+
+  if (atomicNumber >= 57 && atomicNumber <= 71) return "lanthanide";
+
+  if (atomicNumber >= 89 && atomicNumber <= 103) return "actinide";
+
+  const postTransitionElements = [
+    13, 31, 49, 50, 81, 82, 83, 84, 85, 113, 114, 115, 116,
+  ];
+  if (postTransitionElements.includes(atomicNumber))
+    return "post-transition";
+
+  const metalloids = [5, 14, 32, 33, 51, 52, 84];
+  if (metalloids.includes(atomicNumber)) return "metalloid";
+
+  const nonmetals = [1, 6, 7, 8, 9, 15, 16, 17, 34, 35, 53];
+  if (nonmetals.includes(atomicNumber)) return "nonmetal";
+
+  if (group === 18) return "noble-gas";
+
+  return "";
+}
+
+function formatAtomicMass(mass) {
+  if (!mass) return "N/A";
+
+  if (typeof mass === "string" && mass.includes("[")) {
+    return mass;
+  }
+
+  return parseFloat(mass).toFixed(3);
+}
+
+function createPeriodicTable(elements) {
+  const tableContainer = document.getElementById(
+    "periodicTableContainer"
+  );
+  tableContainer.innerHTML = "";
+
+  const periodicTable = document.createElement("div");
+  periodicTable.className = "periodic-table";
+
+  const elementsByNumber = {};
+  elements.forEach((element) => {
+    elementsByNumber[element.number] = element;
+  });
+
+  const positions = [
+    { number: 1, row: 1, col: 1 },
+    { number: 2, row: 1, col: 18 },
+
+    { number: 3, row: 2, col: 1 },
+    { number: 4, row: 2, col: 2 },
+    { number: 5, row: 2, col: 13 },
+    { number: 6, row: 2, col: 14 },
+    { number: 7, row: 2, col: 15 },
+    { number: 8, row: 2, col: 16 },
+    { number: 9, row: 2, col: 17 },
+    { number: 10, row: 2, col: 18 },
+
+    { number: 11, row: 3, col: 1 },
+    { number: 12, row: 3, col: 2 },
+    { number: 13, row: 3, col: 13 },
+    { number: 14, row: 3, col: 14 },
+    { number: 15, row: 3, col: 15 },
+    { number: 16, row: 3, col: 16 },
+    { number: 17, row: 3, col: 17 },
+    { number: 18, row: 3, col: 18 },
+
+    { number: 19, row: 4, col: 1 },
+    { number: 20, row: 4, col: 2 },
+    { number: 21, row: 4, col: 3 },
+    { number: 22, row: 4, col: 4 },
+    { number: 23, row: 4, col: 5 },
+    { number: 24, row: 4, col: 6 },
+    { number: 25, row: 4, col: 7 },
+    { number: 26, row: 4, col: 8 },
+    { number: 27, row: 4, col: 9 },
+    { number: 28, row: 4, col: 10 },
+    { number: 29, row: 4, col: 11 },
+    { number: 30, row: 4, col: 12 },
+    { number: 31, row: 4, col: 13 },
+    { number: 32, row: 4, col: 14 },
+    { number: 33, row: 4, col: 15 },
+    { number: 34, row: 4, col: 16 },
+    { number: 35, row: 4, col: 17 },
+    { number: 36, row: 4, col: 18 },
+
+    { number: 37, row: 5, col: 1 },
+    { number: 38, row: 5, col: 2 },
+    { number: 39, row: 5, col: 3 },
+    { number: 40, row: 5, col: 4 },
+    { number: 41, row: 5, col: 5 },
+    { number: 42, row: 5, col: 6 },
+    { number: 43, row: 5, col: 7 },
+    { number: 44, row: 5, col: 8 },
+    { number: 45, row: 5, col: 9 },
+    { number: 46, row: 5, col: 10 },
+    { number: 47, row: 5, col: 11 },
+    { number: 48, row: 5, col: 12 },
+    { number: 49, row: 5, col: 13 },
+    { number: 50, row: 5, col: 14 },
+    { number: 51, row: 5, col: 15 },
+    { number: 52, row: 5, col: 16 },
+    { number: 53, row: 5, col: 17 },
+    { number: 54, row: 5, col: 18 },
+
+    { number: 55, row: 6, col: 1 },
+    { number: 56, row: 6, col: 2 },
+    { number: 57, row: 6, col: 3 },
+    { number: 72, row: 6, col: 4 },
+    { number: 73, row: 6, col: 5 },
+    { number: 74, row: 6, col: 6 },
+    { number: 75, row: 6, col: 7 },
+    { number: 76, row: 6, col: 8 },
+    { number: 77, row: 6, col: 9 },
+    { number: 78, row: 6, col: 10 },
+    { number: 79, row: 6, col: 11 },
+    { number: 80, row: 6, col: 12 },
+    { number: 81, row: 6, col: 13 },
+    { number: 82, row: 6, col: 14 },
+    { number: 83, row: 6, col: 15 },
+    { number: 84, row: 6, col: 16 },
+    { number: 85, row: 6, col: 17 },
+    { number: 86, row: 6, col: 18 },
+
+    { number: 87, row: 7, col: 1 },
+    { number: 88, row: 7, col: 2 },
+    { number: 89, row: 7, col: 3 },
+    { number: 104, row: 7, col: 4 },
+    { number: 105, row: 7, col: 5 },
+    { number: 106, row: 7, col: 6 },
+    { number: 107, row: 7, col: 7 },
+    { number: 108, row: 7, col: 8 },
+    { number: 109, row: 7, col: 9 },
+    { number: 110, row: 7, col: 10 },
+    { number: 111, row: 7, col: 11 },
+    { number: 112, row: 7, col: 12 },
+    { number: 113, row: 7, col: 13 },
+    { number: 114, row: 7, col: 14 },
+    { number: 115, row: 7, col: 15 },
+    { number: 116, row: 7, col: 16 },
+    { number: 117, row: 7, col: 17 },
+    { number: 118, row: 7, col: 18 },
+
+    { number: 58, row: 8, col: 4 },
+    { number: 59, row: 8, col: 5 },
+    { number: 60, row: 8, col: 6 },
+    { number: 61, row: 8, col: 7 },
+    { number: 62, row: 8, col: 8 },
+    { number: 63, row: 8, col: 9 },
+    { number: 64, row: 8, col: 10 },
+    { number: 65, row: 8, col: 11 },
+    { number: 66, row: 8, col: 12 },
+    { number: 67, row: 8, col: 13 },
+    { number: 68, row: 8, col: 14 },
+    { number: 69, row: 8, col: 15 },
+    { number: 70, row: 8, col: 16 },
+    { number: 71, row: 8, col: 17 },
+
+    { number: 90, row: 9, col: 4 },
+    { number: 91, row: 9, col: 5 },
+    { number: 92, row: 9, col: 6 },
+    { number: 93, row: 9, col: 7 },
+    { number: 94, row: 9, col: 8 },
+    { number: 95, row: 9, col: 9 },
+    { number: 96, row: 9, col: 10 },
+    { number: 97, row: 9, col: 11 },
+    { number: 98, row: 9, col: 12 },
+    { number: 99, row: 9, col: 13 },
+    { number: 100, row: 9, col: 14 },
+    { number: 101, row: 9, col: 15 },
+    { number: 102, row: 9, col: 16 },
+    { number: 103, row: 9, col: 17 },
+  ];
+
+  const grid = {};
+  for (let row = 1; row <= 10; row++) {
+    for (let col = 1; col <= 18; col++) {
+      grid[`${row},${col}`] = null;
+    }
+  }
+
+  positions.forEach((pos) => {
+    const element = elementsByNumber[pos.number];
+    if (element) {
+      grid[`${pos.row},${pos.col}`] = element;
+    }
+  });
+
+  const lanthanideLabel = document.createElement("div");
+  lanthanideLabel.className = "lanthanide-label";
+  lanthanideLabel.textContent = "Lanthanides";
+
+  const actinideLabel = document.createElement("div");
+  actinideLabel.className = "actinide-label";
+  actinideLabel.textContent = "Actinides";
+
+  for (let row = 1; row <= 10; row++) {
+    for (let col = 1; col <= 18; col++) {
+      const key = `${row},${col}`;
+      const element = grid[key];
+
+      if (row === 8 && col === 2) {
+        periodicTable.appendChild(lanthanideLabel);
+        continue;
+      }
+
+      if (row === 9 && col === 2) {
+        periodicTable.appendChild(actinideLabel);
+        continue;
+      }
+
+      const isEmptyCell =
+        (row === 1 && col > 1 && col < 18) ||
+        (row === 2 && col > 2 && col < 13) ||
+        (row === 3 && col > 2 && col < 13) ||
+        (row === 8 && col < 2) ||
+        (row === 8 && col === 3) ||
+        (row === 9 && col < 2) ||
+        (row === 9 && col === 3) ||
+        row === 10;
+
+      if (isEmptyCell) {
+        const emptyCell = document.createElement("div");
+        emptyCell.className = "empty";
+        periodicTable.appendChild(emptyCell);
+        continue;
+      }
+
+      if (element) {
+        createElementDiv(element, periodicTable);
+      } else {
+        const emptyCell = document.createElement("div");
+        emptyCell.className = "empty";
+        periodicTable.appendChild(emptyCell);
+      }
+    }
+  }
+
+  tableContainer.appendChild(periodicTable);
+}
+
+function createElementDiv(element, container) {
+  const elementDiv = document.createElement("div");
+  elementDiv.className = `element ${getElementCategory(element)}`;
+  elementDiv.dataset.element = element.name;
+  elementDiv.style.animationDelay = `${(element.number % 20) * 0.02}s`;
+
+  elementDiv.innerHTML = `
+  <div class="element-number">${element.number}</div>
+  <div class="element-symbol">${element.symbol}</div>
+  <div class="element-name">${element.name}</div>
+  <div class="element-mass">${formatAtomicMass(element.atomic_mass)}</div>
+  <div class="element-tooltip">${element.name} (${element.symbol})</div>
+`;
+
+  elementDiv.addEventListener("mousedown", handleElementClick);
+  elementDiv.addEventListener("contextmenu", handleContextMenu);
+
+  elementDiv.addEventListener("touchstart", handleTouchStart);
+  elementDiv.addEventListener("touchend", handleTouchEnd);
+
+  elementDiv.dataset.elementData = JSON.stringify(element);
+
+  container.appendChild(elementDiv);
+}
+
+// Create and handle the context menu
+function handleContextMenu(event) {
+  event.preventDefault();
+  const elementDiv = event.currentTarget;
+  const element = JSON.parse(elementDiv.dataset.elementData);
+  selectedElement = element;
+  const prevSelected = document.querySelector(".element.selected");
+    if (prevSelected) {
+      prevSelected.classList.remove("selected");
+    }
+
+  const contextMenu = document.getElementById("context-menu");
+  
+  // Position the context menu at the cursor position
+  contextMenu.style.display = "flex";
+  contextMenu.style.left = `${event.clientX}px`;
+  contextMenu.style.top = `${event.clientY}px`;
+  
+  // Set context menu content based on the selected element
+  updateContextMenu(element);
+}
+
+function updateContextMenu(element) {
+  const contextMenu = document.getElementById("context-menu");
+  contextMenu.innerHTML = `
+    <div class="context-menu-header">${element.name} (${element.symbol}) Options</div>
+    <div class="context-menu-item" id="view-bohr">View Bohr Model</div>
+    <div class="context-menu-item" id="view-properties">View Detailed Properties</div>
+    <div class="context-menu-item" id="view-applications">View Applications</div>
+    <div class="context-menu-item" id="view-compounds">View Common Compounds</div>
+    <div class="context-menu-item" id="view-isotopes">View Isotopes</div>
+  `;
+  
+  // Add event listeners to the context menu items
+  document.getElementById("view-bohr").addEventListener("click", () => {
+    window.location.href = window.location.href + "bohr-model-viewer?element=" + element.name;
+  });
+  
+  document.getElementById("view-properties").addEventListener("click", () => {
+    showElementDetails(element);
+    document.querySelector(".overlay").classList.add("visible");
+    document.querySelector(".details-panel").classList.add("visible");
+    closeContextMenu();
+  });
+  
+  document.getElementById("view-applications").addEventListener("click", () => {
+    window.location.href = window.location.href + "element-applications?element=" + element.name;
+  });
+  
+  document.getElementById("view-compounds").addEventListener("click", () => {
+    window.location.href = window.location.href + "element-compounds?element=" + element.name;
+  });
+  
+  document.getElementById("view-isotopes").addEventListener("click", () => {
+    window.location.href = window.location.href + "element-isotopes?element=" + element.name;
+  });
+}
+
+function closeContextMenu() {
+  document.getElementById("context-menu").style.display = "none";
+}
+
+function handleElementClick(event) {
+  event.preventDefault();
+  event.stopPropagation();
+  if (event.button == 0 || event.button == null) {
+    event.preventDefault();
+    event.stopPropagation();
+    const elementDiv = event.currentTarget;
+    const element = JSON.parse(elementDiv.dataset.elementData);
+
+    const prevSelected = document.querySelector(".element.selected");
+    if (prevSelected) {
+      prevSelected.classList.remove("selected");
+    }
+
+    elementDiv.classList.add("selected");
+
+    showElementDetails(element);
+
+    document.querySelector(".overlay").classList.add("visible");
+    document.querySelector(".details-panel").classList.add("visible");
+    closeContextMenu();
+    selectedElement = element;
+  } else if (event.button == 2 || (event.button == 0 && event.altKey)){
+    // Right-click handled by handleContextMenu
+  }
+}
+
+let touchStartTime = 0;
+let touchTimer;
+let touchStartX, touchStartY;
+
+function handleTouchStart(event) {
+  touchStartTime = Date.now();
+  touchStartX = event.touches[0].clientX;
+  touchStartY = event.touches[0].clientY;
+  const elementDiv = event.currentTarget;
+
+  elementDiv.classList.add("touch-active");
+
+  if (touchTimer) clearTimeout(touchTimer);
+
+  touchTimer = setTimeout(() => {
+    // Long press detected - show context menu
+    const element = JSON.parse(elementDiv.dataset.elementData);
+    selectedElement = element;
+    
+    const contextMenu = document.getElementById("context-menu");
+    contextMenu.style.display = "flex";
+    contextMenu.style.left = `${touchStartX}px`;
+    contextMenu.style.top = `${touchStartY}px`;
+    
+    updateContextMenu(element);
+  }, 800);
+}
+
+function setupOverlayClick() {
+  if (!document.querySelector(".overlay")) {
+    const overlay = document.createElement("div");
+    overlay.className = "overlay";
+    document.body.appendChild(overlay);
+
+    const detailsPanel = document.querySelector(".details-panel");
+    document.body.appendChild(detailsPanel);
+  }
+
+  document
+    .querySelector(".overlay")
+    .addEventListener("click", function () {
+      document.querySelector(".overlay").classList.remove("visible");
+      document
+        .querySelector(".details-panel")
+        .classList.remove("visible");
+
+      const selected = document.querySelector(".element.selected");
+      if (selected) {
+        selected.classList.remove("selected");
+      }
+      
+      closeContextMenu();
+    });
+
+  document
+    .querySelector(".details-panel")
+    .addEventListener("click", function (event) {
+      event.stopPropagation();
+    });
+}
+
+function handleTouchEnd(event) {
+  const elementDiv = event.currentTarget;
+  const touchDuration = Date.now() - touchStartTime;
+
+  elementDiv.classList.remove("touch-active");
+
+  if (touchTimer) clearTimeout(touchTimer);
+
+  if (touchDuration < 600) {
+    handleElementClick(event);
+  } else if (touchDuration > 800) {
+    // Long press was already handled in touchstart
+    event.preventDefault();
+  }
+}
+
+function showElementDetails(element) {
+  const detailsDiv = document.getElementById("elementDetails");
+  const detailsPanel = document.getElementById("details-panel");
+  const detailTitle = document.getElementById("detailTitle");
+  
+  detailTitle.textContent = `${element.name} (${element.symbol})`;
+
+  detailsDiv.style.opacity = "0";
+  detailsDiv.style.transform = "translateY(10px)";
+  let detailsHTML = `<div class="element-details">
+  
+  <div class="property-name">Atomic Number</div>
+  <div class="property-value">${element.number}</div>
+  
+  <div class="property-name">Atomic Mass</div>
+  <div class="property-value">${formatAtomicMass(
+    element.atomic_mass
+  )}</div>
+  
+  <div class="property-name">Category</div>
+  <div class="property-value">${element.category || "Unknown"}</div>
+  
+  <div class="property-name">Period</div>
+  <div class="property-value">${element.period}</div>
+  
+  <div class="property-name">Group</div>
+  <div class="property-value">${element.group || "N/A"}</div>
+  
+  <div class="property-name">Phase at STP</div>
+  <div class="property-value">${element.phase || "Unknown"}</div>
+  
+  <div class="property-name">Electron Configuration</div>
+  <div class="property-value">${
+    element.electron_configuration || "Unknown"
+  }</div>
+  
+  <div class="property-name">Electronegativity</div>
+  <div class="property-value">${
+    element.electronegativity_pauling || "Unknown"
+  }</div>
+  
+  <div class="property-name">Density</div>
+  <div class="property-value">${
+    element.density ? element.density + " g/cm³" : "Unknown"
+  }</div>
+  
+  <div class="property-name">Melting Point</div>
+  <div class="property-value">${
+    element.melt ? element.melt + " K" : "Unknown"
+  }</div>
+  
+  <div class="property-name">Boiling Point</div>
+  <div class="property-value">${
+    element.boil ? element.boil + " K" : "Unknown"
+  }</div>
+  
+  <div class="property-name">Discovered By</div>
+  <div class="property-value">${element.discovered_by || "Unknown"}</div>
+</div>`;
+
+  detailsDiv.innerHTML = detailsHTML;
+  document.getElementById("bohrButton").addEventListener("click", (event)=>{
+    window.location.href = window.location.href+"bohr-model-viewer?element=" + element.name;
+  })
+  setTimeout(() => {
+    detailsDiv.style.transition =
+      "opacity 0.3s ease, transform 0.3s ease";
+    detailsDiv.style.opacity = "1";
+    detailsDiv.style.transform = "translateY(0)";
+  }, 50);
+}
+
+function setupSearch() {
+  const searchInput = document.getElementById("elementSearch");
+
+  searchInput.addEventListener("input", () => {
+    const searchTerm = searchInput.value.toLowerCase();
+
+    const prevSelected = document.querySelector(".element.selected");
+    if (prevSelected) {
+      prevSelected.classList.remove("selected");
+    }
+
+    if (searchTerm.trim() === "") {
+      document.querySelectorAll(".element").forEach((el) => {
+        el.style.opacity = "1";
+        el.style.transform = "scale(1)";
+      });
+      return;
+    }
+
+    let exactMatchFound = false;
+
+    document.querySelectorAll(".element").forEach((el) => {
+      const elementName = el.dataset.element?.toLowerCase() || "";
+      const elementSymbol = el
+        .querySelector(".element-symbol")
+        .textContent.toLowerCase();
+
+      if (
+        elementName.includes(searchTerm) ||
+        elementSymbol.includes(searchTerm)
+      ) {
+        el.style.opacity = "1";
+        el.style.transform = "scale(1.05)";
+
+        if (elementName === searchTerm || elementSymbol === searchTerm) {
+          exactMatchFound = true;
+          el.classList.add("selected");
+          el.scrollIntoView({ behavior: "smooth", block: "center" });
+
+          const elementData = JSON.parse(el.dataset.elementData);
+          if (elementData) {
+            showElementDetails(elementData);
+          }
+        }
+      } else {
+        el.style.opacity = "0.3";
+        el.style.transform = "scale(1)";
+      }
+    });
+
+    if (!exactMatchFound && searchTerm.length > 1) {
+      const firstMatch = document.querySelector(
+        `.element[style*="opacity: 1"]`
+      );
+      if (firstMatch) {
+        firstMatch.classList.add("selected");
+
+        const elementData = JSON.parse(firstMatch.dataset.elementData);
+        if (elementData) {
+          showElementDetails(elementData);
+        }
+      }
+    }
+  });
+}
+
+// Add global document click event to close context menu when clicking elsewhere
+document.addEventListener("click", function(event) {
+  const contextMenu = document.getElementById("context-menu");
+  if (contextMenu.style.display === "flex" && !contextMenu.contains(event.target)) {
+    closeContextMenu();
+  }
+});
+
+function setupGlobalKeyboardInput() {
+  document.addEventListener("keydown", function (event) {
+    const searchInput = document.getElementById("elementSearch");
+
+    // Close context menu on Escape key
+    if (event.key === "Escape") {
+      closeContextMenu();
+      return;
+    }
+
+    if (
+      event.target === searchInput ||
+      event.ctrlKey ||
+      event.altKey ||
+      event.metaKey
+    ) {
+      return;
+    }
+
+    if (
+      event.target.tagName === "INPUT" ||
+      event.target.tagName === "TEXTAREA" ||
+      event.target.isContentEditable
+    ) {
+      return;
+    }
+
+    const isPrintableKey = event.key.length === 1;
+    const isControlKey = [
+      "Backspace",
+      "Delete",
+      "ArrowLeft",
+      "ArrowRight",
+      "Home",
+      "End",
+    ].includes(event.key);
+
+    if (isPrintableKey || isControlKey) {
+      searchInput.focus();
+
+      if (!isControlKey) {
+        event.preventDefault();
+        searchInput.value += event.key;
+        searchInput.dispatchEvent(new Event("input"));
+      }
+    }
+
+    if (event.key == "Delete" && searchInput.value.length <= 1) {
+      searchInput.blur();
+    }
+  });
+}
+
+async function fetchPeriodicTableData() {
+  try {
+    const response = await fetch(
+      "https://periodic-table-elements-info.herokuapp.com/elements"
+    );
+
+    if (!response.ok) {
+      console.log("Primary API failed, using backup source");
+      return fetchBackupData();
+    }
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error("Error fetching data:", error);
+    return fetchBackupData();
+  }
+}
+
+async function fetchBackupData() {
+  try {
+    const response = await fetch(
+      "https://raw.githubusercontent.com/Bowserinator/Periodic-Table-JSON/master/PeriodicTableJSON.json"
+    );
+
+    if (!response.ok) {
+      throw new Error("Failed to fetch from backup source");
+    }
+
+    const data = await response.json();
+    return data.elements;
+  } catch (error) {
+    console.error("Error fetching backup data:", error);
+    return useLocalData();
+  }
+}
+
+function useLocalData() {
+  return [
+    {
+      name: "Hydrogen",
+      symbol: "H",
+      number: 1,
+      atomic_mass: 1.008,
+      period: 1,
+      group: 1,
+      phase: "gas",
+      category: "nonmetal",
+      electron_configuration: "1s1",
+      electronegativity_pauling: 2.2,
+      density: 0.0899,
+      boil: 20.271,
+      melt: 13.99,
+      discovered_by: "Henry Cavendish",
+    },
+    {
+      name: "Helium",
+      symbol: "He",
+      number: 2,
+      atomic_mass: 4.0026,
+      period: 1,
+      group: 18,
+      phase: "gas",
+      category: "noble gas",
+      electron_configuration: "1s2",
+      density: 0.1785,
+      boil: 4.222,
+      melt: 0.95,
+      discovered_by: "Pierre Janssen",
+    },
+  ];
+}
+
+async function init() {
+  elementsData = await fetchPeriodicTableData();
+  createPeriodicTable(elementsData);
+  setupSearch();
+  setupOverlayClick();
+  setupGlobalKeyboardInput();
+  
+  // Initialize context menu styles
+  const contextMenu = document.getElementById("context-menu");
+  contextMenu.innerHTML = "<div>Select an element for options</div>";
+}
+
+window.addEventListener("load", init);
+    </script>
+  </body>
+</html>
