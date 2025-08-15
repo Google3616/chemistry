@@ -146,7 +146,7 @@ document.addEventListener('keydown', function(event) {
 });
 
 // Load PDF
-pdfjsLib.getDocument('https://drive.google.com/file/d/1fva0nfZe6XEsiPC9knDJWPPA16V7dqYS/view').promise.then(pdfDoc_ => {
+pdfjsLib.getDocument('https://drive.google.com/uc?export=download&id=1fva0nfZe6XEsiPC9knDJWPPA16V7dqYS').promise.then(pdfDoc_ => {
     pdfDoc = pdfDoc_;
     document.getElementById('page_count').textContent = pdfDoc.numPages;
     renderPage(pageNum);
