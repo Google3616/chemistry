@@ -146,7 +146,7 @@ document.addEventListener('keydown', function(event) {
 });
 
 // Load PDF
-pdfjsLib.getDocument('https://www.dropbox.com/scl/fi/t4ka7sluycdpij4r2wuqd/pN7R8bov_removed.pdf?rlkey=e0esmxwtvajfyhsxpjcdvh9n6&st=e5cny3z2&dl=1').promise.then(pdfDoc_ => {
+pdfjsLib.getDocument('https://arxiv.org/pdf/2506.18902').promise.then(pdfDoc_ => {
     pdfDoc = pdfDoc_;
     document.getElementById('page_count').textContent = pdfDoc.numPages;
     renderPage(pageNum);
