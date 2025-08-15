@@ -25,10 +25,20 @@ body {
     padding: 10px;
     display: flex;
     flex-wrap: wrap;
-    justify-content: flex-start; /* align left */
+    align-items: center;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+}
+
+#homeBtn {
+    margin-right: auto; /* pushes rest of toolbar to center */
+}
+
+#toolbar .toolbar-center {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
     align-items: center;
     gap: 5px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.5);
 }
 
 #toolbar button, 
@@ -40,13 +50,13 @@ body {
     background: var(--accent-color);
     color: white;
     cursor: pointer;
-    transition: background-color 0.3s;
+    transition: background-color 0.3s, transform 0.2s;
 }
-
 
 #toolbar button:hover, 
 #toolbar input:hover {
     background-color: #3a6ad4;
+    transform: scale(1.05);
 }
 
 #toolbar input[type="text"], 
@@ -61,19 +71,23 @@ canvas {
     background: var(--bg-secondary);
     box-shadow: 0 0 15px rgba(0,0,0,0.8);
     border: 2px solid var(--accent-color);
+    display: block;
 }
 </style>
 </head>
 <body>
+
 <div id="toolbar">
     <button id="homeBtn">🏠 Home</button>
-    <button id="prev">⏮ Prev</button>
-    <span>Page <span id="page_num"></span> / <span id="page_count"></span></span>
-    <button id="next">Next ⏭</button>
-    <button id="zoom_in">➕ Zoom In</button>
-    <button id="zoom_out">➖ Zoom Out</button>
-    <input type="text" id="searchTerm" placeholder="Search...">
-    <button id="searchBtn">🔍</button>
+    <div class="toolbar-center">
+        <button id="prev">⏮ Prev</button>
+        <span>Page <span id="page_num"></span> / <span id="page_count"></span></span>
+        <button id="next">Next ⏭</button>
+        <button id="zoom_in">➕ Zoom In</button>
+        <button id="zoom_out">➖ Zoom Out</button>
+        <input type="text" id="searchTerm" placeholder="Search...">
+        <button id="searchBtn">🔍</button>
+    </div>
 </div>
 
 <div id="searchResults"></div>
@@ -145,23 +159,20 @@ function searchInPage() {
     });
 }
 
+// Event listeners
 document.getElementById('prev').addEventListener('click', onPrevPage);
 document.getElementById('next').addEventListener('click', onNextPage);
 document.getElementById('zoom_in').addEventListener('click', zoomIn);
 document.getElementById('zoom_out').addEventListener('click', zoomOut);
 document.getElementById('searchBtn').addEventListener('click', searchInPage);
 document.getElementById('homeBtn').addEventListener('click', () => {
-    window.location.href = '/'; // or the URL of your homepage
+    window.location.href = '/'; // replace with your homepage
 });
 
-
-// 🔹 Add keyboard navigation
+// Keyboard navigation
 document.addEventListener('keydown', function(event) {
-    if (event.key === 'ArrowLeft') {
-        onPrevPage();
-    } else if (event.key === 'ArrowRight') {
-        onNextPage();
-    }
+    if (event.key === 'ArrowLeft') onPrevPage();
+    else if (event.key === 'ArrowRight') onNextPage();
 });
 
 // Load PDF
