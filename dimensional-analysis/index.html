@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Dimensional Analysis Visualizer</title>
+<style>
+  :root {
+    --bg: #0b1020;
+    --panel: #111731;
+    --ink: #e6e8ef;
+    --muted: #a9b2c7;
+    --accent: #6ee7ff;
+    --accent-2: #7c4dff;
+    --danger: #ff6b6b;
+    --ok: #5af78e;
+    --shadow: 0 10px 30px rgba(0,0,0,.35);
+    --radius: 16px;
+  }
+  html, body { height: 100%; }
+  body {
+    margin: 0; font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, Noto Sans, "Apple Color Emoji", "Segoe UI Emoji";
+    background: radial-gradient(1200px 800px at 15% -10%, #142042 0%, transparent 60%),
+                radial-gradient(800px 600px at 110% 10%, #121a36 0%, transparent 50%),
+                var(--bg);
+    color: var(--ink);
+  }
+  .wrap { max-width: 1200px; margin: 32px auto; padding: 0 16px; }
+  h1 { font-weight: 800; letter-spacing: .5px; margin: 0 0 10px; }
+  .subtitle { color: var(--muted); margin-bottom: 22px; }
+  .grid { display: grid; grid-template-columns: 1.2fr .8fr; gap: 18px; }
+  @media (max-width: 980px){ .grid { grid-template-columns: 1fr; } }
+
+  .card { background: linear-gradient(180deg, #121a36, #0f1530); border: 1px solid #1f2750; border-radius: var(--radius); box-shadow: var(--shadow); }
+  .card h2 { margin: 0; font-size: 18px; padding: 14px 18px; border-bottom: 1px solid #1f2750; background: linear-gradient(180deg, rgba(255,255,255,.03), rgba(0,0,0,0)); border-radius: var(--radius) var(--radius) 0 0; }
+  .card .body { padding: 18px; }
+
+  .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+  input, select, button, textarea { color: var(--ink); background: #0c1230; border: 1px solid #24306a; border-radius: 12px; padding: 10px 12px; outline: none; }
+  input::placeholder { color: #7b84a8; }
+  button { cursor: pointer; background: linear-gradient(180deg, #1b2a73, #13235b); border: 1px solid #2b3c8f; transition: .2s transform ease, .2s filter ease; }
+  button:hover { filter: brightness(1.05); }
+  button:active { transform: translateY(1px); }
+  .ghost { background: transparent; border-color: #2a356a; }
+  .accent { background: linear-gradient(180deg, #1e89a8, #15627a); border-color: #24b8d8; }
+  .danger { background: linear-gradient(180deg, #a43944, #7a202a); border-color: #c7454f; }
+
+  .fraction-chain { display: flex; gap: 10px; align-items: center; overflow-x: auto; padding-bottom: 6px; }
+  .chip { font-size: 13px; color: var(--muted); background: #0b1030; border: 1px dashed #2a356a; padding: 6px 10px; border-radius: 999px; white-space: nowrap; }
+
+  .quantity { display: inline-flex; align-items: baseline; gap: 6px; }
+  .qty-value { font-size: 24px; font-weight: 800; }
+  .qty-unit { font-size: 16px; color: var(--muted); }
+
+  .frac { position: relative; background: #0b1030; border: 1px solid #2a356a; border-radius: 14px; padding: 10px 12px; min-width: 160px; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.02); }
+  .frac .label { position: absolute; top: -10px; left: 12px; background: #0b1030; color: var(--muted); font-size: 11px; padding: 2px 6px; border: 1px solid #2a356a; border-radius: 999px; }
+  .frac .num, .frac .den { text-align: center; font-size: 16px; padding: 4px 0; }
+  .frac .bar { height: 1px; background: #314399; margin: 4px 0; }
+  .frac .units { color: #bfc7e6; font-weight: 600; }
+  .frac .value { font-weight: 700; font-size: 18px; }
+  .cancelled { text-decoration: line-through wavy var(--danger); opacity: .55; }
+  .x { font-weight: 900; font-size: 18px; opacity: .7; }
+
+  .result { display: flex; align-items: center; justify-content: space-between; background: #0c1230; border: 1px solid #2a356a; border-radius: 12px; padding: 12px 14px; }
+
+  .pill { border-radius: 999px; padding: 6px 10px; border: 1px solid #33418c; background: #0b1030; color: var(--muted); }
+  .toolbar { display: flex; gap: 10px; flex-wrap: wrap; }
+
+  .table { width: 100%; border-collapse: collapse; }
+  .table th, .table td { border-bottom: 1px solid #233066; padding: 10px 8px; font-size: 14px; text-align: left; }
+  .table th { color: #b8c1e6; font-weight: 700; }
+  .table td .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+  .tiny { font-size: 12px; color: var(--muted); }
+
+  details summary { cursor: pointer; list-style: none; }
+  details summary::-webkit-details-marker{ display:none; }
+  .kbd { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; border: 1px solid #33418c; background: #0b1030; padding: 2px 6px; border-radius: 6px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Dimensional Analysis Visualizer</h1>
+  <div class="subtitle">Build factor-label chains for chemistry: grams ↔ moles, particles, volume, density, molarity, pressure, STP, and more. See units cancel in real time.</div>
+
+  <div class="grid">
+    <div class="card">
+      <h2>1) Start Quantity</h2>
+      <div class="body">
+        <div class="row">
+          <input id="startValue" type="text" inputmode="decimal" placeholder="e.g. 12.5" style="width:160px"/>
+          <input id="startUnit" type="text" placeholder="unit (e.g. g, mL, mol)" style="width:220px"/>
+          <button class="ghost" id="prefill">Prefill demo</button>
+        </div>
+        <div class="tiny" style="margin-top:8px">Tip: You can type compound units like <span class="kbd">g/mL</span>, <span class="kbd">kPa</span>, or <span class="kbd">mol·L⁻¹</span> (use <span class="kbd">mol/L</span> too).</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>2) Quick Add a Conversion</h2>
+      <div class="body">
+        <div class="row" style="gap:8px">
+          <select id="template" style="min-width:260px">
+            <option value="">Choose a template…</option>
+            <option value="custom">Custom factor</option>
+            <option value="metric">Metric prefix (mass/length/volume)</option>
+            <option value="molar-mass">Gram ↔ Mole (molar mass)</option>
+            <option value="avogadro">Mole ↔ Particles (N<sub>A</sub>)</option>
+            <option value="density">Mass ↔ Volume (density)</option>
+            <option value="molarity">Molarity (mol ↔ L)</option>
+            <option value="stp">Gas @ STP (L ↔ mol)</option>
+            <option value="pressure">Pressure units (atm/kPa/mmHg/torr)</option>
+            <option value="volume">Volume (L ↔ mL ↔ cm³)</option>
+            <option value="energy">Energy (J ↔ kJ)</option>
+          </select>
+          <span id="templateFields" class="row" style="flex:1 1 auto"></span>
+          <button id="addTemplate" class="accent">Add</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="grid-column: 1 / -1;">
+      <h2>3) Chain & Cancellation</h2>
+      <div class="body">
+        <div id="chain" class="fraction-chain">
+          <span class="chip">Start by entering a quantity, then add conversion factors.</span>
+        </div>
+        <div class="row" style="margin-top:12px; gap:8px">
+          <button id="addBlank" class="ghost">+ Blank factor</button>
+          <button id="clear" class="danger">Clear all</button>
+          <span class="pill" id="sigInfo">Sig figs: auto</span>
+          <span class="pill">Use <span class="kbd">←</span>/<span class="kbd">→</span> to navigate, <span class="kbd">Del</span> to remove a card.</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>4) Result</h2>
+      <div class="body">
+        <div class="result" style="margin-bottom:10px">
+          <div>
+            <div class="tiny">Numeric result</div>
+            <div class="quantity"><span class="qty-value" id="outValue">—</span><span class="qty-unit" id="outUnit"></span></div>
+          </div>
+          <div class="toolbar">
+            <label class="pill"><input id="sci" type="checkbox" style="vertical-align: middle; margin-right:8px">Scientific notation</label>
+            <label class="pill"><input id="sigAuto" type="checkbox" checked style="vertical-align: middle; margin-right:8px">Auto sig figs</label>
+            <input id="sig" type="number" min="1" max="10" value="3" style="width:70px" title="Sig figs"/>
+          </div>
+        </div>
+        <div class="tiny">Final unit is computed by canceling like terms across the chain. Hover a card to see its label.</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Reference – Common Factors</h2>
+      <div class="body">
+        <table class="table">
+          <tr><th>Category</th><th>Equality</th><th>Notes</th></tr>
+          <tr><td>Avogadro</td><td class="mono">1 mol = 6.022×10²³ particles</td><td>atoms / molecules / formula units</td></tr>
+          <tr><td>Metric mass</td><td class="mono">1 g = 1000 mg = 10⁻³ kg</td><td>prefix ladder</td></tr>
+          <tr><td>Volume</td><td class="mono">1 L = 1000 mL = 1000 cm³</td><td>1 mL = 1 cm³</td></tr>
+          <tr><td>STP</td><td class="mono">1 mol gas ≈ 22.414 L</td><td>0 °C, 1 atm</td></tr>
+          <tr><td>Pressure</td><td class="mono">1 atm = 101.325 kPa = 760 mmHg</td><td>torr ≈ mmHg</td></tr>
+          <tr><td>Molarity</td><td class="mono">M = mol / L</td><td>solution concentration</td></tr>
+          <tr><td>Density</td><td class="mono">ρ = g / mL</td><td>substance-specific</td></tr>
+          <tr><td>Energy</td><td class="mono">1 kJ = 1000 J</td><td></td></tr>
+        </table>
+        <details style="margin-top:10px">
+          <summary><span class="kbd">Note on temperature</span></summary>
+          <div class="tiny">Absolute temperature conversions include offsets (e.g., K = °C + 273.15) and aren’t pure multiplicative factors. Use them before/after your factor chain as separate steps.</div>
+        </details>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ---------- Utilities ----------
+  const $ = (q)=>document.querySelector(q);
+  const $$ = (q)=>Array.from(document.querySelectorAll(q));
+  const fmtSci = (n, sig=3)=> Number(n).toExponential(sig-1).replace('e+','×10^').replace('e-','×10^-');
+  const sigFigs = (s)=>{ // rough sig fig counter from input string
+    s = (s+"").trim();
+    if(!/^[0-9.]+$/.test(s)) return null;
+    if(!s.includes('.')){ // integer: trailing zeros not significant unless specified; assume not
+      return String(parseInt(s,10)).replace(/[^1-9]/g,'').length || 1;
+    }
+    // decimal: all digits except leading zeros
+    const cleaned = s.replace(/^0+/, '').replace(/\./,'');
+    return cleaned.length || 1;
+  };
+  const parseNum = (s)=> Number(String(s).replace(/\s|,/g,''));
+
+  // ---------- State ----------
+  const state = {
+    start: { value: '', unit: '' },
+    cards: [], // {numVal, numUnit, denVal, denUnit, label}
+    focused: -1
+  };
+
+  // ---------- Rendering ----------
+  function render(){
+    // Chain
+    const chain = $('#chain');
+    chain.innerHTML = '';
+    if(!state.start.value || !state.start.unit){
+      chain.append(Object.assign(document.createElement('span'),{className:'chip',textContent:'Start by entering a quantity, then add conversion factors.'}));
+    } else {
+      const start = document.createElement('div');
+      start.className='chip';
+      start.innerHTML = `<span class="tiny">Start</span> <span class="quantity"><span class="qty-value">${state.start.value}</span><span class="qty-unit">${escapeHtml(state.start.unit)}</span></span>`;
+      chain.append(start);
+    }
+    state.cards.forEach((c, idx)=>{
+      chain.append(Object.assign(document.createElement('div'),{className:'x',textContent:'×'}));
+      const frac = document.createElement('div');
+      frac.className='frac';
+      frac.tabIndex=0;
+      frac.title = c.label || '';
+      if(idx===state.focused) frac.style.outline='2px solid #5a7cff';
+      frac.innerHTML = `
+        <div class="label">Factor ${idx+1}</div>
+        <div class="num"><span class="value">${c.numVal}</span> <span class="units ${willCancel(idx,'num')?'cancelled':''}">${escapeHtml(c.numUnit||'')}</span></div>
+        <div class="bar"></div>
+        <div class="den"><span class="value">${c.denVal}</span> <span class="units ${willCancel(idx,'den')?'cancelled':''}">${escapeHtml(c.denUnit||'')}</span></div>
+        <div class="row" style="margin-top:8px">
+          <input data-idx="${idx}" data-k="numVal" type="text" value="${c.numVal}" style="width:82px">
+          <input data-idx="${idx}" data-k="numUnit" type="text" value="${c.numUnit}" placeholder="numerator unit" style="width:120px">
+          <span style="opacity:.4">/</span>
+          <input data-idx="${idx}" data-k="denVal" type="text" value="${c.denVal}" style="width:82px">
+          <input data-idx="${idx}" data-k="denUnit" type="text" value="${c.denUnit}" placeholder="denominator unit" style="width:140px">
+          <button class="ghost" data-idx="${idx}" data-act="flip">↕ flip</button>
+          <button class="ghost" data-idx="${idx}" data-act="dup">⎘ dup</button>
+          <button class="danger" data-idx="${idx}" data-act="del">✕</button>
+        </div>`;
+      chain.append(frac);
+    });
+
+    // Result
+    const {value, unit} = compute();
+    const outValueElm = $('#outValue');
+    const outUnitElm = $('#outUnit');
+    outUnitElm.textContent = unit ? ' '+unit : '';
+
+    const sigAuto = $('#sigAuto').checked;
+    const sig = parseInt($('#sig').value,10) || 3;
+    const sci = $('#sci').checked;
+    const base = value;
+    const sigFromStart = sigFigs(state.start.value);
+    $('#sigInfo').textContent = `Sig figs: ${sigAuto ? (sigFromStart||'auto') : sig}`;
+
+    let shown = base;
+    if(Number.isFinite(base)){
+      const sDigits = sigAuto ? (sigFromStart||sig) : sig;
+      if(sci){ shown = fmtSci(base, sDigits); }
+      else { shown = Number(base.toPrecision(sDigits)).toString(); }
+    } else { shown = '—'; }
+    outValueElm.textContent = shown;
+
+    wireInputs();
+  }
+
+  function escapeHtml(s=''){
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  function wireInputs(){
+    $$('#chain input').forEach(inp=>{
+      inp.oninput = (e)=>{
+        const idx = +e.target.dataset.idx; const k=e.target.dataset.k;
+        let v = e.target.value;
+        if(['numVal','denVal'].includes(k)) v = v.replace(/[^0-9eE+\-.]/g,'');
+        state.cards[idx][k] = v;
+        render();
+      }
+    });
+    $$('#chain button').forEach(btn=>{
+      btn.onclick = (e)=>{
+        const idx = +e.target.dataset.idx; const act = e.target.dataset.act;
+        if(act==='flip'){
+          const c = state.cards[idx];
+          [c.numVal,c.denVal,c.numUnit,c.denUnit] = [c.denVal,c.numVal,c.denUnit,c.numUnit];
+        } else if(act==='dup'){
+          state.cards.splice(idx+1,0,JSON.parse(JSON.stringify(state.cards[idx])));
+        } else if(act==='del'){
+          state.cards.splice(idx,1);
+        }
+        render();
+      }
+    });
+    // keyboard nav
+    $$('#chain .frac').forEach((el,i)=>{
+      el.onfocus = ()=>{ state.focused=i; };
+    });
+  }
+
+  function willCancel(idx, place){
+    // If the unit in numerator/denominator equals the running unit at that point, mark cancelled
+    let currentUnit = state.start.unit;
+    for(let i=0;i<=idx;i++){
+      const c = state.cards[i];
+      if(i===idx){
+        if(place==='num'){
+          // cancels if currentUnit matches denominator unit
+          return normalizeUnit(currentUnit) && normalizeUnit(currentUnit)===normalizeUnit(c.denUnit);
+        } else {
+          // cancels if currentUnit matches numerator unit *after* applying numerator
+          return normalizeUnit(currentUnit) && normalizeUnit(currentUnit)===normalizeUnit(c.numUnit);
+        }
+      }
+      currentUnit = stepUnit(currentUnit, c);
+    }
+    return false;
+  }
+
+  function stepUnit(u, c){
+    // Apply c to unit string u
+    const nu = normalizeUnit(c.numUnit);
+    const du = normalizeUnit(c.denUnit);
+    const cur = normalizeUnit(u);
+    // basic text cancellation: remove matching term
+    const parts = parseCompoundUnit(cur);
+    const numParts = parseCompoundUnit(nu);
+    const denParts = parseCompoundUnit(du);
+
+    // units multiply by numerator and divide by denominator
+    addParts(parts, numParts, +1);
+    addParts(parts, denParts, -1);
+    return partsToString(parts);
+  }
+
+  function compute(){
+    const v0 = parseNum(state.start.value);
+    if(!Number.isFinite(v0)) return {value: NaN, unit: ''};
+    let v = v0;
+    let u = state.start.unit;
+    for(const c of state.cards){
+      const n = parseNum(c.numVal);
+      const d = parseNum(c.denVal);
+      if(!Number.isFinite(n) || !Number.isFinite(d) || d===0) return {value: NaN, unit: ''};
+      v *= (n/d);
+      u = stepUnit(u, c);
+    }
+    return { value: v, unit: u };
+  }
+
+  // Unit parsing helpers (simple — string based)
+  function normalizeUnit(u=''){
+    return String(u).replace(/\s/g,'').replace(/·/g,'*').replace(/⁻/g,'-').replace(/−/g,'-');
+  }
+  function parseCompoundUnit(u=''){
+    if(!u) return {};
+    // accepts forms like mol/L, g*mL^-1, mol·L^-1
+    const factors = u.split('*').map(x=>x.trim()).join('*').split('/');
+    let map = {};
+    if(factors.length===1){ // no slash
+      const left = factors[0].split('*');
+      left.forEach(t=>inc(map, baseAndPow(t), +1));
+    } else {
+      const left = factors[0].split('*');
+      left.forEach(t=>inc(map, baseAndPow(t), +1));
+      const right = factors.slice(1).join('/').split('*');
+      right.forEach(t=>inc(map, baseAndPow(t), -1));
+    }
+    return map;
+  }
+  function baseAndPow(token){
+    // token like mol, L^-1, mL^-2
+    const m = token.match(/([^\^]+?)(?:\^(-?\d+))?$/);
+    if(!m) return {b: token, p: 1};
+    let b = m[1]; let p = m[2]? parseInt(m[2],10) : 1;
+    // also accept suffix -1 style (L-1)
+    const m2 = b.match(/(.+?)(-\d+)$/);
+    if(m2){ b=m2[1]; p = parseInt(m2[2],10); }
+    return {b, p};
+  }
+  function inc(map, {b,p}, sign){ map[b]=(map[b]||0)+p*sign; if(map[b]===0) delete map[b]; }
+  function addParts(base, add, sign){ for(const k in add){ base[k]=(base[k]||0)+add[k]*sign; if(base[k]===0) delete base[k]; } }
+  function partsToString(parts){
+    const num=[], den=[];
+    for(const [b,p] of Object.entries(parts)){
+      if(p>0) num.push(p===1? b : `${b}^${p}`);
+      if(p<0) den.push(p===-1? b : `${b}^${-p}`);
+    }
+    if(!num.length && !den.length) return '';
+    if(!den.length) return num.join('·');
+    if(!num.length) return '1/'+den.join('·');
+    return num.join('·') + '/' + den.join('·');
+  }
+
+  // ---------- Templates ----------
+  const T = {
+    metric(dir='k=>base', unit='g', mag=1000){
+      // dir: 'k=>base' or 'base=>k' etc.
+      const ladders = { k:1e3, h:1e2, da:1e1, base:1, d:1e-1, c:1e-2, m:1e-3, u:1e-6, n:1e-9 };
+      const mapSym = {u:'μ'};
+      const [from,to] = dir.split('=>');
+      const f = ladders[from], t=ladders[to];
+      const factor = f/t; // from unit to to-unit multiply by factor
+      return { numVal: t, numUnit: `${to==='base'? '' : (mapSym[to]||to)}${unit}`.replace(/^/,'1 ').trim().replace(/^1\s/,'1 '), denVal: f, denUnit: `${from==='base'? '' : (mapSym[from]||from)}${unit}`.replace(/^/,'1 ').trim().replace(/^1\s/,'1 '), label: 'Metric prefix conversion' };
+    },
+    molarMass(to='mol', M=18.015){
+      if(to==='mol') return { numVal: 1, numUnit: 'mol', denVal: M, denUnit: 'g', label: `Use molar mass M = ${M} g/mol` };
+      return { numVal: M, numUnit: 'g', denVal: 1, denUnit: 'mol', label: `Use molar mass M = ${M} g/mol` };
+    },
+    avogadro(to='particles', NA=6.022e23){
+      if(to==='particles') return { numVal: NA, numUnit: 'particles', denVal: 1, denUnit: 'mol', label: `Avogadro's number = ${NA}` };
+      return { numVal: 1, numUnit: 'mol', denVal: NA, denUnit: 'particles', label: `Avogadro's number = ${NA}` };
+    },
+    density(to='mL', rho=1.00){
+      if(to==='mL') return { numVal: 1, numUnit: 'mL', denVal: rho, denUnit: 'g', label: `Density ρ = ${rho} g/mL` };
+      return { numVal: rho, numUnit: 'g', denVal: 1, denUnit: 'mL', label: `Density ρ = ${rho} g/mL` };
+    },
+    molarity(to='L', M=1.0){
+      if(to==='L') return { numVal: 1, numUnit: 'L', denVal: M, denUnit: 'mol', label: `Molarity M = ${M} mol/L` };
+      return { numVal: M, numUnit: 'mol', denVal: 1, denUnit: 'L', label: `Molarity M = ${M} mol/L` };
+    },
+    stp(to='L', Vm=22.414){
+      if(to==='L') return { numVal: Vm, numUnit: 'L', denVal: 1, denUnit: 'mol', label: `STP molar volume Vₘ = ${Vm} L/mol` };
+      return { numVal: 1, numUnit: 'mol', denVal: Vm, denUnit: 'L', label: `STP molar volume Vₘ = ${Vm} L/mol` };
+    },
+    pressure(pair='atm>kPa'){
+      const map = { 'atm>kPa':[101.325,'kPa','atm'], 'kPa>atm':[1/101.325,'atm','kPa'], 'atm>mmHg':[760,'mmHg','atm'], 'mmHg>atm':[1/760,'atm','mmHg'], 'kPa>mmHg':[760/101.325,'mmHg','kPa'], 'mmHg>kPa':[101.325/760,'kPa','mmHg'] };
+      const [val, to, from] = map[pair];
+      return { numVal: val, numUnit: to, denVal: 1, denUnit: from, label: 'Pressure unit conversion' };
+    },
+    volume(pair='L>mL'){
+      const map = { 'L>mL':[1000,'mL','L'], 'mL>L':[1/1000,'L','mL'], 'mL>cm^3':[1,'cm^3','mL'], 'cm^3>mL':[1,'mL','cm^3'] };
+      const [val, to, from] = map[pair];
+      return { numVal: val, numUnit: to, denVal: 1, denUnit: from, label: 'Volume conversion' };
+    },
+    energy(pair='kJ>J'){
+      const map = { 'kJ>J':[1000,'J','kJ'], 'J>kJ':[1/1000,'kJ','J'] };
+      const [val, to, from] = map[pair];
+      return { numVal: val, numUnit: to, denVal: 1, denUnit: from, label: 'Energy conversion' };
+    },
+    custom(numVal=1,numUnit='',denVal=1,denUnit='',label='Custom factor'){
+      return { numVal, numUnit, denVal, denUnit, label };
+    }
+  };
+
+  function templateUI(value){
+    const box = $('#templateFields');
+    box.innerHTML='';
+    const make = (html)=>{ const d=document.createElement('div'); d.innerHTML=html; return d.firstElementChild };
+    switch(value){
+      case 'custom':
+        box.append(make(`<input id="t_num" type="text" placeholder="numerator value" style="width:130px">`));
+        box.append(make(`<input id="t_numu" type="text" placeholder="numerator unit" style="width:130px">`));
+        box.append(make(`<span style="opacity:.4">/</span>`));
+        box.append(make(`<input id="t_den" type="text" placeholder="denominator value" style="width:130px">`));
+        box.append(make(`<input id="t_denu" type="text" placeholder="denominator unit" style="width:130px">`));
+        break;
+      case 'metric':
+        box.append(make(`<select id="t_dir"><option value="k=>base">kilo → base</option><option value="base=>k">base → kilo</option><option value="m=>base">milli → base</option><option value="base=>m">base → milli</option><option value="c=>base">centi → base</option><option value="base=>c">base → centi</option><option value="u=>base">micro → base</option><option value="base=>u">base → micro</option></select>`));
+        box.append(make(`<input id="t_unit" type="text" placeholder="base unit (e.g. g, L, m)" style="width:160px">`));
+        break;
+      case 'molar-mass':
+        box.append(make(`<input id="t_M" type="text" placeholder="M (g/mol) e.g. 58.44" style="width:160px">`));
+        box.append(make(`<select id="t_to"><option value="mol">to mol</option><option value="g">to g</option></select>`));
+        break;
+      case 'avogadro':
+        box.append(make(`<input id="t_NA" type="text" placeholder="N_A (6.022e23)" style="width:160px">`));
+        box.append(make(`<select id="t_to2"><option value="particles">to particles</option><option value="mol">to mol</option></select>`));
+        break;
+      case 'density':
+        box.append(make(`<input id="t_rho" type="text" placeholder="ρ (g/mL)" style="width:160px">`));
+        box.append(make(`<select id="t_to3"><option value="mL">to mL</option><option value="g">to g</option></select>`));
+        break;
+      case 'molarity':
+        box.append(make(`<input id="t_M2" type="text" placeholder="M (mol/L)" style="width:160px">`));
+        box.append(make(`<select id="t_to4"><option value="L">to L</option><option value="mol">to mol</option></select>`));
+        break;
+      case 'stp':
+        box.append(make(`<input id="t_Vm" type="text" placeholder="V_m (22.414)" style="width:160px">`));
+        box.append(make(`<select id="t_to5"><option value="L">to L</option><option value="mol">to mol</option></select>`));
+        break;
+      case 'pressure':
+        box.append(make(`<select id="t_p"><option value="atm>kPa">atm → kPa</option><option value="kPa>atm">kPa → atm</option><option value="atm>mmHg">atm → mmHg</option><option value="mmHg>atm">mmHg → atm</option><option value="kPa>mmHg">kPa → mmHg</option><option value="mmHg>kPa">mmHg → kPa</option></select>`));
+        break;
+      case 'volume':
+        box.append(make(`<select id="t_v"><option value="L>mL">L → mL</option><option value="mL>L">mL → L</option><option value="mL>cm^3">mL → cm³</option><option value="cm^3>mL">cm³ → mL</option></select>`));
+        break;
+      case 'energy':
+        box.append(make(`<select id="t_e"><option value="kJ>J">kJ → J</option><option value="J>kJ">J → kJ</option></select>`));
+        break;
+    }
+  }
+
+  $('#template').addEventListener('change', (e)=> templateUI(e.target.value));
+
+  $('#addTemplate').addEventListener('click', ()=>{
+    const v = $('#template').value;
+    if(!v) return;
+    let factor=null;
+    try{
+      if(v==='custom'){
+        factor = T.custom($('#t_num').value||1, $('#t_numu').value||'', $('#t_den').value||1, $('#t_denu').value||'', 'Custom factor');
+      } else if(v==='metric'){
+        factor = T.metric($('#t_dir').value, $('#t_unit').value||'g');
+      } else if(v==='molar-mass'){
+        const M = parseNum($('#t_M').value||'18.015'); const to=$('#t_to').value;
+        factor = T.molarMass(to, M);
+      } else if(v==='avogadro'){
+        const NA = parseNum($('#t_NA').value||'6.022e23'); const to=$('#t_to2').value;
+        factor = T.avogadro(to, NA);
+      } else if(v==='density'){
+        const rho = parseNum($('#t_rho').value||'1.0'); const to=$('#t_to3').value;
+        factor = T.density(to, rho);
+      } else if(v==='molarity'){
+        const M = parseNum($('#t_M2').value||'1.0'); const to=$('#t_to4').value;
+        factor = T.molarity(to, M);
+      } else if(v==='stp'){
+        const Vm = parseNum($('#t_Vm').value||'22.414'); const to=$('#t_to5').value;
+        factor = T.stp(to, Vm);
+      } else if(v==='pressure'){
+        factor = T.pressure($('#t_p').value);
+      } else if(v==='volume'){
+        factor = T.volume($('#t_v').value);
+      } else if(v==='energy'){
+        factor = T.energy($('#t_e').value);
+      }
+    } catch(err){ console.error(err); }
+    if(factor){ state.cards.push(factor); render(); }
+  });
+
+  // Start inputs
+  $('#startValue').addEventListener('input', (e)=>{ state.start.value = e.target.value; render(); });
+  $('#startUnit').addEventListener('input', (e)=>{ state.start.unit = e.target.value; render(); });
+
+  $('#prefill').onclick = ()=>{
+    state.start.value = '12.5';
+    state.start.unit = 'g';
+    // g -> mol (NaCl, M=58.44) -> particles -> molarity (to L at 0.50 M)
+    state.cards = [ T.molarMass('mol',58.44), T.avogadro('particles'), T.molarity('L',0.50) ];
+    render();
+  };
+
+  $('#addBlank').onclick = ()=>{ state.cards.push(T.custom(1,'',1,'','Blank factor')); render(); };
+  $('#clear').onclick = ()=>{ state.cards = []; render(); };
+
+  $('#sigAuto').onchange = ()=> render();
+  $('#sig').oninput = ()=> render();
+  $('#sci').onchange = ()=> render();
+
+  document.addEventListener('keydown', (e)=>{
+    if(['ArrowLeft','ArrowRight','Delete','Backspace'].includes(e.key)){
+      if(state.cards.length===0) return;
+      if(state.focused<0) state.focused=0;
+      if(e.key==='ArrowRight'){ state.focused = Math.min(state.cards.length-1, state.focused+1); render(); e.preventDefault(); }
+      if(e.key==='ArrowLeft'){ state.focused = Math.max(0, state.focused-1); render(); e.preventDefault(); }
+      if(e.key==='Delete' || e.key==='Backspace'){
+        state.cards.splice(state.focused,1); state.focused=Math.max(0,state.focused-1); render(); e.preventDefault();
+      }
+    }
+  });
+
+  // initial
+  render();
+</script>
+</body>
+</html>
